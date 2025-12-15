@@ -289,6 +289,32 @@ def main():
             })
             
             st.session_state.chat_history.append((prompt, full_response))
+    
+    if not st.session_state.messages:
+        st.markdown("### Примеры вопросов:")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("Как создать базу знаний в Managed RAG?", key="ex1"):
+                st.session_state.messages.append({"role": "user", "content": "Как создать базу знаний в Managed RAG?"})
+                st.rerun()
+            if st.button("Что такое Kubernetes?", key="ex2"):
+                st.session_state.messages.append({"role": "user", "content": "Что такое Kubernetes?"})
+                st.rerun()
+            if st.button("Как настроить PostgreSQL?", key="ex3"):
+                st.session_state.messages.append({"role": "user", "content": "Как настроить PostgreSQL?"})
+                st.rerun()
+        
+        with col2:
+            if st.button("Расскажи про Foundation Models", key="ex4"):
+                st.session_state.messages.append({"role": "user", "content": "Расскажи про Foundation Models"})
+                st.rerun()
+            if st.button("Как работать с Kafka?", key="ex5"):
+                st.session_state.messages.append({"role": "user", "content": "Как работать с Kafka?"})
+                st.rerun()
+            if st.button("Как настроить мониторинг?", key="ex6"):
+                st.session_state.messages.append({"role": "user", "content": "Как настроить мониторинг?"})
+                st.rerun()
 
 
 if __name__ == "__main__":
