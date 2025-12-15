@@ -264,19 +264,8 @@ class RAGEngine:
             
             messages.append(HumanMessage(content=question))
             
-            print(f"DEBUG: Sending {len(messages)} messages to LLM")
-            print(f"DEBUG: Question: {question[:100]}")
-            
             response = self.llm.invoke(messages)
-            
-            print(f"DEBUG: Response type: {type(response)}")
-            print(f"DEBUG: Response content type: {type(response.content) if hasattr(response, 'content') else 'no content attr'}")
-            print(f"DEBUG: Response content: {response.content[:200] if response.content else 'EMPTY'}")
-            
-            answer = response.content if response.content else ""
-            
-            if not answer.strip():
-                print(f"Warning: Empty response from LLM for question: {question[:50]}...")
+            answer = response.content
             
             def char_generator(text):
                 words = text.split(' ')
