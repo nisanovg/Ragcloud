@@ -202,11 +202,25 @@ class RAGEngine:
                     content = content[4:]
             
             questions = json.loads(content)
-            return questions
+            
+            sources = []
+            seen_sources = set()
+            for doc in relevant_docs:
+                source_key = doc.metadata.get('title', doc.metadata.get('source', 'Unknown'))
+                if source_key not in seen_sources:
+                    seen_sources.add(source_key)
+                    sources.append({
+                        "title": doc.metadata.get('title', 'Неизвестно'),
+                        "source": doc.metadata.get('source', ''),
+                        "url": doc.metadata.get('url', ''),
+                        "snippet": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content
+                    })
+            
+            return {"questions": questions, "sources": sources[:3]}
             
         except Exception as e:
             print(f"Error generating quiz questions: {e}")
-            return []
+            return {"questions": [], "sources": []}
     
     def query_stream(self, question: str, chat_history: Optional[List[Tuple[str, str]]] = None) -> Dict[str, Any]:
         """Query the RAG system with streaming response."""

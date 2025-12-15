@@ -138,7 +138,7 @@ def init_session_state():
     if "quiz_mode" not in st.session_state:
         st.session_state.quiz_mode = False
     if "current_quiz" not in st.session_state:
-        st.session_state.current_quiz = []
+        st.session_state.current_quiz = {"questions": [], "sources": []}
     if "pending_question" not in st.session_state:
         st.session_state.pending_question = None
     if "processing" not in st.session_state:
@@ -176,7 +176,10 @@ def display_sources(sources: List[dict]):
             """, unsafe_allow_html=True)
 
 
-def display_quiz(questions: List[dict]):
+def display_quiz(quiz_data: dict):
+    questions = quiz_data.get("questions", [])
+    sources = quiz_data.get("sources", [])
+    
     if not questions:
         st.warning("Не удалось сгенерировать вопросы. Попробуйте другую тему.")
         return
@@ -198,6 +201,9 @@ def display_quiz(questions: List[dict]):
                 <strong>Объяснение:</strong> {q.get('explanation', '')}
             </div>
             """, unsafe_allow_html=True)
+    
+    if sources:
+        display_sources(sources)
 
 
 def stream_response(rag, prompt, chat_history):
@@ -252,7 +258,7 @@ def main():
             st.session_state.messages = []
             st.session_state.chat_history = []
             st.session_state.quiz_mode = False
-            st.session_state.current_quiz = []
+            st.session_state.current_quiz = {"questions": [], "sources": []}
             rag = get_rag_engine()
             rag.clear_memory()
             st.rerun()
@@ -351,11 +357,11 @@ def main():
             
             st.session_state.chat_history.append((prompt, full_response))
     
-    if st.session_state.quiz_mode and st.session_state.current_quiz:
+    if st.session_state.quiz_mode and st.session_state.current_quiz.get("questions"):
         display_quiz(st.session_state.current_quiz)
         if st.button("← Скрыть вопросы"):
             st.session_state.quiz_mode = False
-            st.session_state.current_quiz = []
+            st.session_state.current_quiz = {"questions": [], "sources": []}
             st.rerun()
 
 
