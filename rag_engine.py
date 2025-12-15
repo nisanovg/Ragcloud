@@ -1,14 +1,12 @@
 import os
-import pickle
+import json
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
 from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import FAISS
-from langchain.schema import Document
-from langchain.prompts import ChatPromptTemplate
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationBufferMemory
+from langchain_core.documents import Document
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 from document_loader import prepare_documents_for_indexing
 
@@ -21,8 +19,6 @@ class RAGEngine:
         self.embeddings = None
         self.vector_store = None
         self.llm = None
-        self.memory = None
-        self.qa_chain = None
         self._initialized = False
         
     def initialize(self) -> bool:
@@ -42,12 +38,6 @@ class RAGEngine:
                 openai_api_key=OPENAI_API_KEY,
                 model="gpt-5",
                 max_completion_tokens=2048
-            )
-            
-            self.memory = ConversationBufferMemory(
-                memory_key="chat_history",
-                return_messages=True,
-                output_key="answer"
             )
             
             self._initialized = True
@@ -72,7 +62,6 @@ class RAGEngine:
                     allow_dangerous_deserialization=True
                 )
                 print("Loaded existing vector store")
-                self._setup_qa_chain()
                 return True
             except Exception as e:
                 print(f"Error loading vector store: {e}")
@@ -98,26 +87,7 @@ class RAGEngine:
         self.vector_store.save_local(str(index_path))
         print(f"Vector store built and saved with {len(documents)} chunks")
         
-        self._setup_qa_chain()
         return True
-    
-    def _setup_qa_chain(self):
-        """Set up the QA chain for conversational retrieval."""
-        if not self.vector_store:
-            return
-            
-        retriever = self.vector_store.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": 5}
-        )
-        
-        self.qa_chain = ConversationalRetrievalChain.from_llm(
-            llm=self.llm,
-            retriever=retriever,
-            memory=self.memory,
-            return_source_documents=True,
-            verbose=False
-        )
     
     def get_system_prompt(self) -> str:
         """Get the system prompt for the AI tutor."""
@@ -156,15 +126,15 @@ class RAGEngine:
             system_prompt = self.get_system_prompt()
             
             messages = [
-                {"role": "system", "content": system_prompt.format(context=context)}
+                SystemMessage(content=system_prompt.format(context=context))
             ]
             
             if chat_history:
                 for human_msg, ai_msg in chat_history[-5:]:
-                    messages.append({"role": "user", "content": human_msg})
-                    messages.append({"role": "assistant", "content": ai_msg})
+                    messages.append(HumanMessage(content=human_msg))
+                    messages.append(AIMessage(content=ai_msg))
             
-            messages.append({"role": "user", "content": question})
+            messages.append(HumanMessage(content=question))
             
             response = self.llm.invoke(messages)
             
@@ -223,9 +193,8 @@ class RAGEngine:
 
 Создавай вопросы разного уровня сложности. Отвечай только JSON без дополнительного текста."""
 
-            response = self.llm.invoke([{"role": "user", "content": prompt}])
+            response = self.llm.invoke([HumanMessage(content=prompt)])
             
-            import json
             content = response.content.strip()
             if content.startswith("```"):
                 content = content.split("```")[1]
@@ -240,9 +209,8 @@ class RAGEngine:
             return []
     
     def clear_memory(self):
-        """Clear conversation memory."""
-        if self.memory:
-            self.memory.clear()
+        """Clear conversation memory - placeholder for session-based memory."""
+        pass
 
 
 _rag_engine = None

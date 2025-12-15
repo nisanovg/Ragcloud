@@ -138,7 +138,6 @@ def main():
     init_session_state()
     
     with st.sidebar:
-        st.image("https://cloud.ru/favicon.ico", width=50)
         st.title("AI-Репетитор")
         st.markdown("---")
         
