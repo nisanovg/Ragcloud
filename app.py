@@ -110,9 +110,6 @@ st.markdown("""
         display: none !important;
     }
     
-    div[data-testid="stVerticalBlock"]:has(button[disabled]) {
-        display: none !important;
-    }
     
     div[data-baseweb="input"]:focus-within {
         border-color: #8B5CF6 !important;
