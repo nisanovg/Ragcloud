@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+import time
 from typing import List, Tuple
 
 from rag_engine import get_rag_engine, RAGEngine
@@ -13,17 +14,21 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.5rem;
+    @font-face {
+        font-family: 'Factor A';
+        src: url('app/static/fonts/FactorA-Regular.ttf') format('truetype');
+        font-weight: normal;
+    }
+    @font-face {
+        font-family: 'Factor A';
+        src: url('app/static/fonts/FactorA-Bold.ttf') format('truetype');
         font-weight: bold;
-        color: #1E3A5F;
-        margin-bottom: 0.5rem;
     }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #666;
-        margin-bottom: 2rem;
+    
+    html, body, [class*="css"] {
+        font-family: 'Factor A', -apple-system, BlinkMacSystemFont, sans-serif;
     }
+    
     .source-card {
         background-color: #f8f9fa;
         border-left: 4px solid #1E88E5;
@@ -52,15 +57,51 @@ st.markdown("""
         border-radius: 8px;
         margin-top: 0.5rem;
     }
+    
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+    
     .stChatMessage {
-        padding: 1rem;
+        animation: fadeInUp 0.3s ease-out;
+    }
+    
+    .thinking-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #666;
+        font-style: italic;
+        padding: 0.5rem 0;
+    }
+    
+    .thinking-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #1E88E5;
+        border-radius: 50%;
+        animation: pulse 1.4s ease-in-out infinite;
+    }
+    
+    .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+    
+    @keyframes pulse {
+        0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+        40% { opacity: 1; transform: scale(1); }
     }
 </style>
 """, unsafe_allow_html=True)
 
 
 def init_session_state():
-    """Initialize session state variables."""
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "chat_history" not in st.session_state:
@@ -76,12 +117,10 @@ def init_session_state():
 
 
 def check_api_key() -> bool:
-    """Check if OpenAI API key is configured."""
     return bool(os.environ.get("OPENAI_API_KEY"))
 
 
 def initialize_rag() -> Tuple[bool, str]:
-    """Initialize RAG engine and build index."""
     rag = get_rag_engine()
     
     if not rag.initialize():
@@ -94,11 +133,10 @@ def initialize_rag() -> Tuple[bool, str]:
 
 
 def display_sources(sources: List[dict]):
-    """Display source documents used for the answer."""
     if not sources:
         return
     
-    with st.expander("Использованные источники", expanded=False):
+    with st.expander("📚 Использованные источники", expanded=False):
         for source in sources:
             st.markdown(f"""
             <div class="source-card">
@@ -110,7 +148,6 @@ def display_sources(sources: List[dict]):
 
 
 def display_quiz(questions: List[dict]):
-    """Display quiz questions for self-assessment."""
     if not questions:
         st.warning("Не удалось сгенерировать вопросы. Попробуйте другую тему.")
         return
@@ -134,19 +171,25 @@ def display_quiz(questions: List[dict]):
             """, unsafe_allow_html=True)
 
 
+def stream_response(rag, prompt, chat_history):
+    result = rag.query_stream(prompt, chat_history)
+    return result
+
+
 def main():
     init_session_state()
     
     with st.sidebar:
-        st.title("AI-Репетитор")
+        st.title("🎓 AI-Репетитор")
+        st.caption("Cloud.ru")
         st.markdown("---")
         
         if not check_api_key():
-            st.error("API ключ OpenAI не настроен. Добавьте OPENAI_API_KEY в секреты.")
+            st.error("API ключ OpenAI не настроен.")
             st.stop()
         
         if not st.session_state.rag_initialized:
-            with st.spinner("Инициализация системы..."):
+            with st.spinner("Инициализация..."):
                 success, message = initialize_rag()
                 if success:
                     st.session_state.rag_initialized = True
@@ -155,10 +198,9 @@ def main():
                     st.error(message)
                     st.stop()
         else:
-            st.success("Система готова к работе")
+            st.success("Готово к работе")
         
         st.markdown("---")
-        st.subheader("Настройки")
         
         st.session_state.show_sources = st.checkbox(
             "Показывать источники",
@@ -166,23 +208,24 @@ def main():
         )
         
         st.markdown("---")
-        st.subheader("Самопроверка")
+        st.subheader("📝 Самопроверка")
         
-        quiz_topic = st.text_input("Тема для вопросов", placeholder="Например: Kubernetes")
+        quiz_topic = st.text_input("Тема", placeholder="Например: Kubernetes")
         
         if st.button("Сгенерировать вопросы", use_container_width=True):
             if quiz_topic:
-                with st.spinner("Генерация вопросов..."):
+                with st.spinner("Генерация..."):
                     rag = get_rag_engine()
                     questions = rag.generate_quiz_questions(quiz_topic)
                     st.session_state.current_quiz = questions
                     st.session_state.quiz_mode = True
+                    st.rerun()
             else:
-                st.warning("Введите тему для генерации вопросов")
+                st.warning("Введите тему")
         
         st.markdown("---")
         
-        if st.button("Очистить историю", use_container_width=True):
+        if st.button("🗑️ Очистить историю", use_container_width=True):
             st.session_state.messages = []
             st.session_state.chat_history = []
             st.session_state.quiz_mode = False
@@ -190,24 +233,10 @@ def main():
             rag = get_rag_engine()
             rag.clear_memory()
             st.rerun()
-        
-        st.markdown("---")
-        st.markdown("""
-        **Темы базы знаний:**
-        - AI Factory
-        - Базы данных
-        - Контейнеры
-        - Сети
-        - Мониторинг
-        - И другие...
-        """)
-    
-    st.markdown('<div class="main-header">AI-Репетитор по техническим дисциплинам</div>', unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">Ваш персональный помощник в изучении облачных технологий Cloud.ru</div>', unsafe_allow_html=True)
     
     if st.session_state.quiz_mode and st.session_state.current_quiz:
         display_quiz(st.session_state.current_quiz)
-        if st.button("Вернуться к чату"):
+        if st.button("← Вернуться к чату"):
             st.session_state.quiz_mode = False
             st.rerun()
         st.markdown("---")
@@ -218,57 +247,48 @@ def main():
             if message["role"] == "assistant" and "sources" in message and st.session_state.show_sources:
                 display_sources(message["sources"])
     
-    if prompt := st.chat_input("Задайте вопрос по техническим дисциплинам..."):
+    if prompt := st.chat_input("Задайте вопрос..."):
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with st.chat_message("user"):
             st.markdown(prompt)
         
         with st.chat_message("assistant"):
-            with st.spinner("Ищу информацию в базе знаний..."):
-                rag = get_rag_engine()
-                result = rag.query(prompt, st.session_state.chat_history)
-                
-                st.markdown(result["answer"])
-                
-                if st.session_state.show_sources and result.get("sources"):
-                    display_sources(result["sources"])
-                
-                st.session_state.messages.append({
-                    "role": "assistant",
-                    "content": result["answer"],
-                    "sources": result.get("sources", [])
-                })
-                
-                st.session_state.chat_history.append((prompt, result["answer"]))
-    
-    if not st.session_state.messages:
-        st.markdown("---")
-        st.markdown("### Примеры вопросов:")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            example_questions = [
-                "Как создать базу знаний в Managed RAG?",
-                "Что такое Kubernetes и как его использовать?",
-                "Как настроить PostgreSQL в Cloud.ru?"
-            ]
-            for q in example_questions:
-                if st.button(q, key=f"example_{q[:20]}"):
-                    st.session_state.messages.append({"role": "user", "content": q})
-                    st.rerun()
-        
-        with col2:
-            example_questions2 = [
-                "Расскажи про Foundation Models",
-                "Как работать с Kafka в облаке?",
-                "Как настроить мониторинг?"
-            ]
-            for q in example_questions2:
-                if st.button(q, key=f"example2_{q[:20]}"):
-                    st.session_state.messages.append({"role": "user", "content": q})
-                    st.rerun()
+            thinking_placeholder = st.empty()
+            thinking_placeholder.markdown("""
+            <div class="thinking-indicator">
+                <div class="thinking-dot"></div>
+                <div class="thinking-dot"></div>
+                <div class="thinking-dot"></div>
+                <span>Анализирую базу знаний...</span>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            rag = get_rag_engine()
+            result = rag.query_stream(prompt, st.session_state.chat_history)
+            
+            thinking_placeholder.empty()
+            
+            response_placeholder = st.empty()
+            full_response = ""
+            
+            for chunk in result["answer_stream"]:
+                full_response += chunk
+                response_placeholder.markdown(full_response + "▌")
+                time.sleep(0.02)
+            
+            response_placeholder.markdown(full_response)
+            
+            if st.session_state.show_sources and result.get("sources"):
+                display_sources(result["sources"])
+            
+            st.session_state.messages.append({
+                "role": "assistant",
+                "content": full_response,
+                "sources": result.get("sources", [])
+            })
+            
+            st.session_state.chat_history.append((prompt, full_response))
 
 
 if __name__ == "__main__":

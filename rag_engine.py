@@ -208,6 +208,71 @@ class RAGEngine:
             print(f"Error generating quiz questions: {e}")
             return []
     
+    def query_stream(self, question: str, chat_history: Optional[List[Tuple[str, str]]] = None) -> Dict[str, Any]:
+        """Query the RAG system with streaming response."""
+        if not self.vector_store or not self.llm:
+            return {
+                "answer_stream": iter(["Система не инициализирована."]),
+                "sources": [],
+                "error": True
+            }
+        
+        try:
+            relevant_docs = self.vector_store.similarity_search(question, k=5)
+            
+            context = "\n\n---\n\n".join([
+                f"Источник: {doc.metadata.get('title', 'Неизвестно')}\n{doc.page_content}"
+                for doc in relevant_docs
+            ])
+            
+            system_prompt = self.get_system_prompt()
+            
+            messages = [
+                SystemMessage(content=system_prompt.format(context=context))
+            ]
+            
+            if chat_history:
+                for human_msg, ai_msg in chat_history[-5:]:
+                    messages.append(HumanMessage(content=human_msg))
+                    messages.append(AIMessage(content=ai_msg))
+            
+            messages.append(HumanMessage(content=question))
+            
+            response = self.llm.invoke(messages)
+            answer = response.content
+            
+            def char_generator(text):
+                words = text.split(' ')
+                for i, word in enumerate(words):
+                    yield word + (' ' if i < len(words) - 1 else '')
+            
+            sources = []
+            seen_sources = set()
+            for doc in relevant_docs:
+                source_key = doc.metadata.get('title', doc.metadata.get('source', 'Unknown'))
+                if source_key not in seen_sources:
+                    seen_sources.add(source_key)
+                    sources.append({
+                        "title": doc.metadata.get('title', 'Неизвестно'),
+                        "source": doc.metadata.get('source', ''),
+                        "url": doc.metadata.get('url', ''),
+                        "section": doc.metadata.get('section', ''),
+                        "snippet": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content
+                    })
+            
+            return {
+                "answer_stream": char_generator(answer),
+                "sources": sources[:3],
+                "error": False
+            }
+            
+        except Exception as e:
+            return {
+                "answer_stream": iter([f"Ошибка: {str(e)}"]),
+                "sources": [],
+                "error": True
+            }
+    
     def clear_memory(self):
         """Clear conversation memory - placeholder for session-based memory."""
         pass
