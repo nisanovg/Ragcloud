@@ -234,6 +234,24 @@ class RAGEngine:
             print(f"Error generating quiz questions: {e}")
             return {"questions": [], "sources": []}
     
+    def get_fallback_prompt(self) -> str:
+        """Get the fallback prompt when RAG doesn't find relevant docs."""
+        return """Ты — AI-репетитор по техническим дисциплинам от Cloud.ru. У тебя нет информации в базе знаний по этому конкретному вопросу, но ты можешь ответить на основе своих общих знаний.
+
+Правила работы:
+1. Отвечай на русском языке
+2. Давай развёрнутые, понятные объяснения
+3. Честно скажи, что информация основана на общих знаниях, а не на базе Cloud.ru
+4. Будь дружелюбным и поддерживающим
+
+Вовлечение студента:
+- В конце ответа предложи связанные темы или задай вопрос для продолжения диалога
+
+Этические принципы:
+- Избегай предвзятости
+- Не используй нецензурный контент
+- Защищай данные пользователей"""
+
     def query_stream(self, question: str, chat_history: Optional[List[Tuple[str, str]]] = None) -> Dict[str, Any]:
         """Query the RAG system with streaming response."""
         if not self.vector_store or not self.llm:
@@ -244,17 +262,27 @@ class RAGEngine:
             }
         
         try:
-            relevant_docs = self.vector_store.similarity_search(question, k=5)
+            results_with_scores = self.vector_store.similarity_search_with_score(question, k=5)
             
-            context = "\n\n---\n\n".join([
-                f"Источник: {doc.metadata.get('title', 'Неизвестно')}\n{doc.page_content}"
-                for doc in relevant_docs
-            ])
+            has_relevant_docs = False
+            relevant_docs = []
+            for doc, score in results_with_scores:
+                if score < 1.5:
+                    has_relevant_docs = True
+                    relevant_docs.append(doc)
             
-            system_prompt = self.get_system_prompt()
+            if has_relevant_docs and relevant_docs:
+                context = "\n\n---\n\n".join([
+                    f"Источник: {doc.metadata.get('title', 'Неизвестно')}\n{doc.page_content}"
+                    for doc in relevant_docs
+                ])
+                system_prompt = self.get_system_prompt().format(context=context)
+            else:
+                system_prompt = self.get_fallback_prompt()
+                relevant_docs = []
             
             messages = [
-                SystemMessage(content=system_prompt.format(context=context))
+                SystemMessage(content=system_prompt)
             ]
             
             if chat_history:

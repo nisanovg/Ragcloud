@@ -140,6 +140,8 @@ def init_session_state():
         st.session_state.pending_question = None
     if "processing" not in st.session_state:
         st.session_state.processing = False
+    if "awaiting_response" not in st.session_state:
+        st.session_state.awaiting_response = False
 
 
 def check_api_key() -> bool:
@@ -256,17 +258,25 @@ def main():
             st.session_state.chat_history = []
             st.session_state.quiz_mode = False
             st.session_state.current_quiz = {"questions": [], "sources": []}
+            st.session_state.awaiting_response = False
+            st.session_state.pending_question = None
             rag = get_rag_engine()
             rag.clear_memory()
             st.rerun()
     
-    prompt = None
+    need_response = False
+    current_question = None
+    
     if st.session_state.pending_question:
-        prompt = st.session_state.pending_question
+        current_question = st.session_state.pending_question
         st.session_state.pending_question = None
-        st.session_state.messages.append({"role": "user", "content": prompt})
-    elif st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
-        prompt = st.session_state.messages[-1]["content"]
+        st.session_state.messages.append({"role": "user", "content": current_question})
+        st.session_state.awaiting_response = True
+        need_response = True
+    elif st.session_state.awaiting_response and st.session_state.messages:
+        if st.session_state.messages[-1]["role"] == "user":
+            current_question = st.session_state.messages[-1]["content"]
+            need_response = True
     
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -276,7 +286,7 @@ def main():
     
     examples_container = st.empty()
     
-    if not st.session_state.messages and not st.session_state.quiz_mode:
+    if not st.session_state.messages and not st.session_state.quiz_mode and not st.session_state.awaiting_response:
         with examples_container.container():
             st.markdown("<div style='margin-top: 40vh;'></div>", unsafe_allow_html=True)
             st.markdown("### Примеры вопросов:")
@@ -285,40 +295,37 @@ def main():
             with col1:
                 if st.button("Как создать базу знаний в Managed RAG?", key="ex1"):
                     st.session_state.pending_question = "Как создать базу знаний в Managed RAG?"
-                    examples_container.empty()
                     st.rerun()
                 if st.button("Что такое Kubernetes?", key="ex2"):
                     st.session_state.pending_question = "Что такое Kubernetes?"
-                    examples_container.empty()
                     st.rerun()
                 if st.button("Как настроить PostgreSQL?", key="ex3"):
                     st.session_state.pending_question = "Как настроить PostgreSQL?"
-                    examples_container.empty()
                     st.rerun()
             
             with col2:
                 if st.button("Расскажи про Foundation Models", key="ex4"):
                     st.session_state.pending_question = "Расскажи про Foundation Models"
-                    examples_container.empty()
                     st.rerun()
                 if st.button("Как работать с Kafka?", key="ex5"):
                     st.session_state.pending_question = "Как работать с Kafka?"
-                    examples_container.empty()
                     st.rerun()
                 if st.button("Как настроить мониторинг?", key="ex6"):
                     st.session_state.pending_question = "Как настроить мониторинг?"
-                    examples_container.empty()
                     st.rerun()
     
-    chat_prompt = st.chat_input("Задайте вопрос...")
-    if chat_prompt:
-        prompt = chat_prompt
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        examples_container.empty()
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    is_disabled = st.session_state.awaiting_response
+    chat_prompt = st.chat_input("Задайте вопрос...", disabled=is_disabled)
     
-    if prompt:
+    if chat_prompt and not is_disabled:
+        current_question = chat_prompt
+        st.session_state.messages.append({"role": "user", "content": current_question})
+        st.session_state.awaiting_response = True
+        need_response = True
+        with st.chat_message("user"):
+            st.markdown(current_question)
+    
+    if need_response and current_question:
         with st.chat_message("assistant"):
             thinking_placeholder = st.empty()
             thinking_placeholder.markdown("""
@@ -330,31 +337,38 @@ def main():
             </div>
             """, unsafe_allow_html=True)
             
-            rag = get_rag_engine()
-            result = rag.query_stream(prompt, st.session_state.chat_history)
-            
-            thinking_placeholder.empty()
-            
-            response_placeholder = st.empty()
-            full_response = ""
-            
-            for chunk in result["answer_stream"]:
-                full_response += chunk
-                response_placeholder.markdown(full_response + "▌")
-                time.sleep(0.02)
-            
-            response_placeholder.markdown(full_response)
-            
-            if st.session_state.show_sources and result.get("sources"):
-                display_sources(result["sources"])
-            
-            st.session_state.messages.append({
-                "role": "assistant",
-                "content": full_response,
-                "sources": result.get("sources", [])
-            })
-            
-            st.session_state.chat_history.append((prompt, full_response))
+            try:
+                rag = get_rag_engine()
+                result = rag.query_stream(current_question, st.session_state.chat_history)
+                
+                thinking_placeholder.empty()
+                
+                response_placeholder = st.empty()
+                full_response = ""
+                
+                for chunk in result["answer_stream"]:
+                    full_response += chunk
+                    response_placeholder.markdown(full_response + "▌")
+                    time.sleep(0.02)
+                
+                response_placeholder.markdown(full_response)
+                
+                if st.session_state.show_sources and result.get("sources"):
+                    display_sources(result["sources"])
+                
+                st.session_state.messages.append({
+                    "role": "assistant",
+                    "content": full_response,
+                    "sources": result.get("sources", [])
+                })
+                
+                st.session_state.chat_history.append((current_question, full_response))
+                
+            except Exception as e:
+                thinking_placeholder.empty()
+                st.error(f"Произошла ошибка: {str(e)}")
+            finally:
+                st.session_state.awaiting_response = False
     
     if st.session_state.quiz_mode and st.session_state.current_quiz.get("questions"):
         display_quiz(st.session_state.current_quiz)
