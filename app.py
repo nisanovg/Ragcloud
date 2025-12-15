@@ -106,6 +106,10 @@ st.markdown("""
         box-shadow: 0 0 0 1px #8B5CF6 !important;
     }
     
+    .stTextInput div[data-testid="InputInstructions"] {
+        display: none !important;
+    }
+    
     div[data-baseweb="input"]:focus-within {
         border-color: #8B5CF6 !important;
     }
@@ -223,7 +227,7 @@ def main():
         st.markdown("---")
         st.subheader("✏️ Самопроверка")
         
-        quiz_topic = st.text_input("Тема", placeholder="Например: Kubernetes")
+        quiz_topic = st.text_input("Тема", placeholder="Например: Kubernetes", label_visibility="collapsed")
         
         if st.button("Сгенерировать вопросы", use_container_width=True):
             if quiz_topic:
