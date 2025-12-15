@@ -251,19 +251,19 @@ def main():
             rag.clear_memory()
             st.rerun()
     
+    prompt = None
+    if st.session_state.pending_question:
+        prompt = st.session_state.pending_question
+        st.session_state.pending_question = None
+        st.session_state.messages.append({"role": "user", "content": prompt})
+    
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
             if message["role"] == "assistant" and "sources" in message and st.session_state.show_sources:
                 display_sources(message["sources"])
     
-    prompt = st.chat_input("Задайте вопрос...")
-    
-    if st.session_state.pending_question:
-        prompt = st.session_state.pending_question
-        st.session_state.pending_question = None
-    
-    if not st.session_state.messages and not st.session_state.quiz_mode and not prompt:
+    if not st.session_state.messages and not st.session_state.quiz_mode:
         st.markdown("<div style='margin-top: 40vh;'></div>", unsafe_allow_html=True)
         st.markdown("### Примеры вопросов:")
         col1, col2 = st.columns(2)
@@ -290,12 +290,14 @@ def main():
                 st.session_state.pending_question = "Как настроить мониторинг?"
                 st.rerun()
     
-    if prompt:
+    chat_prompt = st.chat_input("Задайте вопрос...")
+    if chat_prompt:
+        prompt = chat_prompt
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
         with st.chat_message("user"):
             st.markdown(prompt)
-        
+    
+    if prompt:
         with st.chat_message("assistant"):
             thinking_placeholder = st.empty()
             thinking_placeholder.markdown("""
