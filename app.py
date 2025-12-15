@@ -265,6 +265,8 @@ def main():
         prompt = st.session_state.pending_question
         st.session_state.pending_question = None
         st.session_state.messages.append({"role": "user", "content": prompt})
+    elif st.session_state.messages and st.session_state.messages[-1]["role"] == "user":
+        prompt = st.session_state.messages[-1]["content"]
     
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):

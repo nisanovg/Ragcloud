@@ -281,6 +281,9 @@ class RAGEngine:
             }
             
         except Exception as e:
+            import traceback
+            print(f"Error in query_stream: {e}")
+            traceback.print_exc()
             return {
                 "answer_stream": iter([f"Ошибка: {str(e)}"]),
                 "sources": [],
