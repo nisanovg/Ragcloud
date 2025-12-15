@@ -110,6 +110,10 @@ st.markdown("""
         display: none !important;
     }
     
+    div[data-testid="stVerticalBlock"]:has(button[disabled]) {
+        display: none !important;
+    }
+    
     div[data-baseweb="input"]:focus-within {
         border-color: #8B5CF6 !important;
     }
@@ -137,6 +141,8 @@ def init_session_state():
         st.session_state.current_quiz = []
     if "pending_question" not in st.session_state:
         st.session_state.pending_question = None
+    if "processing" not in st.session_state:
+        st.session_state.processing = False
 
 
 def check_api_key() -> bool:
@@ -263,37 +269,47 @@ def main():
             if message["role"] == "assistant" and "sources" in message and st.session_state.show_sources:
                 display_sources(message["sources"])
     
+    examples_container = st.empty()
+    
     if not st.session_state.messages and not st.session_state.quiz_mode:
-        st.markdown("<div style='margin-top: 40vh;'></div>", unsafe_allow_html=True)
-        st.markdown("### Примеры вопросов:")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("Как создать базу знаний в Managed RAG?", key="ex1"):
-                st.session_state.pending_question = "Как создать базу знаний в Managed RAG?"
-                st.rerun()
-            if st.button("Что такое Kubernetes?", key="ex2"):
-                st.session_state.pending_question = "Что такое Kubernetes?"
-                st.rerun()
-            if st.button("Как настроить PostgreSQL?", key="ex3"):
-                st.session_state.pending_question = "Как настроить PostgreSQL?"
-                st.rerun()
-        
-        with col2:
-            if st.button("Расскажи про Foundation Models", key="ex4"):
-                st.session_state.pending_question = "Расскажи про Foundation Models"
-                st.rerun()
-            if st.button("Как работать с Kafka?", key="ex5"):
-                st.session_state.pending_question = "Как работать с Kafka?"
-                st.rerun()
-            if st.button("Как настроить мониторинг?", key="ex6"):
-                st.session_state.pending_question = "Как настроить мониторинг?"
-                st.rerun()
+        with examples_container.container():
+            st.markdown("<div style='margin-top: 40vh;'></div>", unsafe_allow_html=True)
+            st.markdown("### Примеры вопросов:")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if st.button("Как создать базу знаний в Managed RAG?", key="ex1"):
+                    st.session_state.pending_question = "Как создать базу знаний в Managed RAG?"
+                    examples_container.empty()
+                    st.rerun()
+                if st.button("Что такое Kubernetes?", key="ex2"):
+                    st.session_state.pending_question = "Что такое Kubernetes?"
+                    examples_container.empty()
+                    st.rerun()
+                if st.button("Как настроить PostgreSQL?", key="ex3"):
+                    st.session_state.pending_question = "Как настроить PostgreSQL?"
+                    examples_container.empty()
+                    st.rerun()
+            
+            with col2:
+                if st.button("Расскажи про Foundation Models", key="ex4"):
+                    st.session_state.pending_question = "Расскажи про Foundation Models"
+                    examples_container.empty()
+                    st.rerun()
+                if st.button("Как работать с Kafka?", key="ex5"):
+                    st.session_state.pending_question = "Как работать с Kafka?"
+                    examples_container.empty()
+                    st.rerun()
+                if st.button("Как настроить мониторинг?", key="ex6"):
+                    st.session_state.pending_question = "Как настроить мониторинг?"
+                    examples_container.empty()
+                    st.rerun()
     
     chat_prompt = st.chat_input("Задайте вопрос...")
     if chat_prompt:
         prompt = chat_prompt
         st.session_state.messages.append({"role": "user", "content": prompt})
+        examples_container.empty()
         with st.chat_message("user"):
             st.markdown(prompt)
     
