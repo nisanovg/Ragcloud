@@ -265,7 +265,10 @@ class RAGEngine:
             messages.append(HumanMessage(content=question))
             
             response = self.llm.invoke(messages)
-            answer = response.content
+            answer = response.content if response.content else ""
+            
+            if not answer.strip():
+                print(f"Warning: Empty response from LLM for question: {question[:50]}...")
             
             def char_generator(text):
                 words = text.split(' ')

@@ -343,6 +343,9 @@ def main():
                 response_placeholder.markdown(full_response + "▌")
                 time.sleep(0.02)
             
+            if not full_response.strip():
+                full_response = "Извините, не удалось сгенерировать ответ. Попробуйте переформулировать вопрос."
+            
             response_placeholder.markdown(full_response)
             
             if st.session_state.show_sources and result.get("sources"):
