@@ -7,8 +7,8 @@ from rag_engine import get_rag_engine, RAGEngine
 
 st.set_page_config(
     page_title="AI-Репетитор | Cloud.ru",
-    page_icon="🎓",
-    layout="wide",
+    page_icon="💡",
+    layout="centered",
     initial_sidebar_state="expanded"
 )
 
@@ -155,7 +155,7 @@ def display_sources(sources: List[dict]):
     if not sources:
         return
     
-    with st.expander("📚 Использованные источники", expanded=False):
+    with st.expander("📖 Использованные источники", expanded=False):
         for source in sources:
             st.markdown(f"""
             <div class="source-card">
@@ -199,7 +199,7 @@ def main():
     init_session_state()
     
     with st.sidebar:
-        st.title("🎓 AI-Репетитор")
+        st.title("💡 AI-Репетитор")
         st.caption("Cloud.ru")
         
         if not check_api_key():
@@ -221,7 +221,7 @@ def main():
         )
         
         st.markdown("---")
-        st.subheader("📝 Самопроверка")
+        st.subheader("✏️ Самопроверка")
         
         quiz_topic = st.text_input("Тема", placeholder="Например: Kubernetes")
         
@@ -238,7 +238,7 @@ def main():
         
         st.markdown("---")
         
-        if st.button("🗑️ Очистить историю", use_container_width=True):
+        if st.button("Очистить историю", use_container_width=True):
             st.session_state.messages = []
             st.session_state.chat_history = []
             st.session_state.quiz_mode = False
@@ -252,6 +252,33 @@ def main():
             st.markdown(message["content"])
             if message["role"] == "assistant" and "sources" in message and st.session_state.show_sources:
                 display_sources(message["sources"])
+    
+    if not st.session_state.messages and not st.session_state.quiz_mode:
+        st.markdown("<div style='margin-top: 40vh;'></div>", unsafe_allow_html=True)
+        st.markdown("### Примеры вопросов:")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            if st.button("Как создать базу знаний в Managed RAG?", key="ex1"):
+                st.session_state.pending_question = "Как создать базу знаний в Managed RAG?"
+                st.rerun()
+            if st.button("Что такое Kubernetes?", key="ex2"):
+                st.session_state.pending_question = "Что такое Kubernetes?"
+                st.rerun()
+            if st.button("Как настроить PostgreSQL?", key="ex3"):
+                st.session_state.pending_question = "Как настроить PostgreSQL?"
+                st.rerun()
+        
+        with col2:
+            if st.button("Расскажи про Foundation Models", key="ex4"):
+                st.session_state.pending_question = "Расскажи про Foundation Models"
+                st.rerun()
+            if st.button("Как работать с Kafka?", key="ex5"):
+                st.session_state.pending_question = "Как работать с Kafka?"
+                st.rerun()
+            if st.button("Как настроить мониторинг?", key="ex6"):
+                st.session_state.pending_question = "Как настроить мониторинг?"
+                st.rerun()
     
     prompt = st.chat_input("Задайте вопрос...")
     
@@ -308,32 +335,6 @@ def main():
             st.session_state.quiz_mode = False
             st.session_state.current_quiz = []
             st.rerun()
-    
-    if not st.session_state.messages and not st.session_state.quiz_mode:
-        st.markdown("### Примеры вопросов:")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("Как создать базу знаний в Managed RAG?", key="ex1"):
-                st.session_state.pending_question = "Как создать базу знаний в Managed RAG?"
-                st.rerun()
-            if st.button("Что такое Kubernetes?", key="ex2"):
-                st.session_state.pending_question = "Что такое Kubernetes?"
-                st.rerun()
-            if st.button("Как настроить PostgreSQL?", key="ex3"):
-                st.session_state.pending_question = "Как настроить PostgreSQL?"
-                st.rerun()
-        
-        with col2:
-            if st.button("Расскажи про Foundation Models", key="ex4"):
-                st.session_state.pending_question = "Расскажи про Foundation Models"
-                st.rerun()
-            if st.button("Как работать с Kafka?", key="ex5"):
-                st.session_state.pending_question = "Как работать с Kafka?"
-                st.rerun()
-            if st.button("Как настроить мониторинг?", key="ex6"):
-                st.session_state.pending_question = "Как настроить мониторинг?"
-                st.rerun()
 
 
 if __name__ == "__main__":
