@@ -253,7 +253,13 @@ def main():
             if message["role"] == "assistant" and "sources" in message and st.session_state.show_sources:
                 display_sources(message["sources"])
     
-    if not st.session_state.messages and not st.session_state.quiz_mode:
+    prompt = st.chat_input("Задайте вопрос...")
+    
+    if st.session_state.pending_question:
+        prompt = st.session_state.pending_question
+        st.session_state.pending_question = None
+    
+    if not st.session_state.messages and not st.session_state.quiz_mode and not prompt:
         st.markdown("<div style='margin-top: 40vh;'></div>", unsafe_allow_html=True)
         st.markdown("### Примеры вопросов:")
         col1, col2 = st.columns(2)
@@ -279,12 +285,6 @@ def main():
             if st.button("Как настроить мониторинг?", key="ex6"):
                 st.session_state.pending_question = "Как настроить мониторинг?"
                 st.rerun()
-    
-    prompt = st.chat_input("Задайте вопрос...")
-    
-    if st.session_state.pending_question:
-        prompt = st.session_state.pending_question
-        st.session_state.pending_question = None
     
     if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
