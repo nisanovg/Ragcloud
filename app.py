@@ -46,13 +46,16 @@ st.markdown("""
         margin-top: 0.5rem;
     }
     .quiz-question {
-        background-color: #E3F2FD;
+        background-color: #2d3748;
+        color: #ffffff;
         padding: 1rem;
         border-radius: 8px;
         margin: 1rem 0;
+        border-left: 4px solid #4299e1;
     }
     .quiz-answer {
-        background-color: #E8F5E9;
+        background-color: #1a202c;
+        color: #e2e8f0;
         padding: 1rem;
         border-radius: 8px;
         margin-top: 0.5rem;
@@ -193,12 +196,9 @@ def main():
                 success, message = initialize_rag()
                 if success:
                     st.session_state.rag_initialized = True
-                    st.success(message)
                 else:
                     st.error(message)
                     st.stop()
-        else:
-            st.success("Готово к работе")
         
         st.markdown("---")
         
@@ -233,13 +233,6 @@ def main():
             rag = get_rag_engine()
             rag.clear_memory()
             st.rerun()
-    
-    if st.session_state.quiz_mode and st.session_state.current_quiz:
-        display_quiz(st.session_state.current_quiz)
-        if st.button("← Вернуться к чату"):
-            st.session_state.quiz_mode = False
-            st.rerun()
-        st.markdown("---")
     
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
@@ -290,7 +283,14 @@ def main():
             
             st.session_state.chat_history.append((prompt, full_response))
     
-    if not st.session_state.messages:
+    if st.session_state.quiz_mode and st.session_state.current_quiz:
+        display_quiz(st.session_state.current_quiz)
+        if st.button("← Скрыть вопросы"):
+            st.session_state.quiz_mode = False
+            st.session_state.current_quiz = []
+            st.rerun()
+    
+    if not st.session_state.messages and not st.session_state.quiz_mode:
         st.markdown("### Примеры вопросов:")
         col1, col2 = st.columns(2)
         
