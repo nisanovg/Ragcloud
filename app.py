@@ -100,6 +100,20 @@ st.markdown("""
         0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
         40% { opacity: 1; transform: scale(1); }
     }
+    
+    .stTextInput input:focus, .stChatInput textarea:focus {
+        border-color: #8B5CF6 !important;
+        box-shadow: 0 0 0 1px #8B5CF6 !important;
+    }
+    
+    div[data-baseweb="input"]:focus-within {
+        border-color: #8B5CF6 !important;
+    }
+    
+    .stChatInput > div:focus-within {
+        border-color: #8B5CF6 !important;
+        box-shadow: 0 0 0 1px #8B5CF6 !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -117,6 +131,8 @@ def init_session_state():
         st.session_state.quiz_mode = False
     if "current_quiz" not in st.session_state:
         st.session_state.current_quiz = []
+    if "pending_question" not in st.session_state:
+        st.session_state.pending_question = None
 
 
 def check_api_key() -> bool:
@@ -185,7 +201,6 @@ def main():
     with st.sidebar:
         st.title("🎓 AI-Репетитор")
         st.caption("Cloud.ru")
-        st.markdown("---")
         
         if not check_api_key():
             st.error("API ключ OpenAI не настроен.")
@@ -199,8 +214,6 @@ def main():
                 else:
                     st.error(message)
                     st.stop()
-        
-        st.markdown("---")
         
         st.session_state.show_sources = st.checkbox(
             "Показывать источники",
@@ -240,7 +253,13 @@ def main():
             if message["role"] == "assistant" and "sources" in message and st.session_state.show_sources:
                 display_sources(message["sources"])
     
-    if prompt := st.chat_input("Задайте вопрос..."):
+    prompt = st.chat_input("Задайте вопрос...")
+    
+    if st.session_state.pending_question:
+        prompt = st.session_state.pending_question
+        st.session_state.pending_question = None
+    
+    if prompt:
         st.session_state.messages.append({"role": "user", "content": prompt})
         
         with st.chat_message("user"):
@@ -296,24 +315,24 @@ def main():
         
         with col1:
             if st.button("Как создать базу знаний в Managed RAG?", key="ex1"):
-                st.session_state.messages.append({"role": "user", "content": "Как создать базу знаний в Managed RAG?"})
+                st.session_state.pending_question = "Как создать базу знаний в Managed RAG?"
                 st.rerun()
             if st.button("Что такое Kubernetes?", key="ex2"):
-                st.session_state.messages.append({"role": "user", "content": "Что такое Kubernetes?"})
+                st.session_state.pending_question = "Что такое Kubernetes?"
                 st.rerun()
             if st.button("Как настроить PostgreSQL?", key="ex3"):
-                st.session_state.messages.append({"role": "user", "content": "Как настроить PostgreSQL?"})
+                st.session_state.pending_question = "Как настроить PostgreSQL?"
                 st.rerun()
         
         with col2:
             if st.button("Расскажи про Foundation Models", key="ex4"):
-                st.session_state.messages.append({"role": "user", "content": "Расскажи про Foundation Models"})
+                st.session_state.pending_question = "Расскажи про Foundation Models"
                 st.rerun()
             if st.button("Как работать с Kafka?", key="ex5"):
-                st.session_state.messages.append({"role": "user", "content": "Как работать с Kafka?"})
+                st.session_state.pending_question = "Как работать с Kafka?"
                 st.rerun()
             if st.button("Как настроить мониторинг?", key="ex6"):
-                st.session_state.messages.append({"role": "user", "content": "Как настроить мониторинг?"})
+                st.session_state.pending_question = "Как настроить мониторинг?"
                 st.rerun()
 
 
