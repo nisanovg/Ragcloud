@@ -369,6 +369,7 @@ def main():
                 st.error(f"Произошла ошибка: {str(e)}")
             finally:
                 st.session_state.awaiting_response = False
+                st.rerun()
     
     if st.session_state.quiz_mode and st.session_state.current_quiz.get("questions"):
         display_quiz(st.session_state.current_quiz)

@@ -294,8 +294,6 @@ class RAGEngine:
             
             response = self.llm.invoke(messages)
             answer = response.content if response.content else ""
-            print(f"DEBUG: API response length: {len(answer)}")
-            print(f"DEBUG: API response preview: {answer[:200] if answer else 'EMPTY'}")
             
             if not answer:
                 answer = "Извините, не удалось получить ответ. Пожалуйста, попробуйте ещё раз."
