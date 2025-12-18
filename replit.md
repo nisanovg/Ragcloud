@@ -58,7 +58,7 @@ streamlit run app.py --server.port 5000
 - **Streamlit** - веб-интерфейс
 - **LangChain** - RAG пайплайн
 - **FAISS** - векторный поиск
-- **OpenAI GPT-5** - генерация ответов
+- **OpenAI GPT-4o** - генерация ответов
 - **OpenAI text-embedding-3-small** - векторизация
 
 ## Функциональность

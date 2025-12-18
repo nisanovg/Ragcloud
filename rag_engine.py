@@ -32,12 +32,11 @@ class RAGEngine:
                 model="text-embedding-3-small"
             )
             
-            # the newest OpenAI model is "gpt-5" which was released August 7, 2025.
-            # do not change this unless explicitly requested by the user
             self.llm = ChatOpenAI(
                 openai_api_key=OPENAI_API_KEY,
-                model="gpt-5",
-                max_completion_tokens=2048
+                model="gpt-4o",
+                max_completion_tokens=2048,
+                max_retries=3
             )
             
             self._initialized = True
@@ -292,11 +291,22 @@ class RAGEngine:
             
             messages.append(HumanMessage(content=question))
             
-            response = self.llm.invoke(messages)
-            answer = response.content if response.content else ""
+            answer = ""
+            max_retries = 2
+            for attempt in range(max_retries):
+                try:
+                    response = self.llm.invoke(messages)
+                    answer = response.content if response.content else ""
+                    if answer:
+                        break
+                    print(f"Empty response on attempt {attempt + 1}, retrying...")
+                except Exception as api_error:
+                    print(f"API error on attempt {attempt + 1}: {api_error}")
+                    if attempt == max_retries - 1:
+                        raise
             
             if not answer:
-                answer = "Извините, не удалось получить ответ. Пожалуйста, попробуйте ещё раз."
+                answer = "Извините, не удалось получить ответ от AI. Пожалуйста, попробуйте ещё раз или переформулируйте вопрос."
             
             def char_generator(text):
                 words = text.split(' ')
