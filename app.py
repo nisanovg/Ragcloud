@@ -269,6 +269,24 @@ def main():
         
         kb_options = list(KNOWLEDGE_BASES.keys())
         
+        disabled_indices = [i for i, kb_id in enumerate(kb_options) if not KNOWLEDGE_BASES[kb_id]["enabled"]]
+        
+        if disabled_indices:
+            css_selectors = ", ".join([
+                f'ul[data-testid="stSelectboxVirtualDropdown"] li:nth-child({i+1})'
+                for i in disabled_indices
+            ])
+            st.markdown(f"""
+            <style>
+                {css_selectors} {{
+                    pointer-events: none !important;
+                    opacity: 0.5 !important;
+                    cursor: not-allowed !important;
+                    background-color: #f0f0f0 !important;
+                }}
+            </style>
+            """, unsafe_allow_html=True)
+        
         def format_kb(kb_id):
             kb_info = KNOWLEDGE_BASES[kb_id]
             if kb_info["enabled"]:
@@ -286,7 +304,6 @@ def main():
         )
         
         if not KNOWLEDGE_BASES[selected]["enabled"]:
-            st.warning("Эта база знаний пока недоступна.")
             selected = st.session_state.selected_kb
         
         if selected != st.session_state.selected_kb:
