@@ -175,6 +175,22 @@ def display_sources(sources: List[dict]):
             """, unsafe_allow_html=True)
 
 
+def display_recommendations(recommendations: List[dict]):
+    if not recommendations:
+        return
+    
+    with st.expander("📚 Рекомендуемые материалы для изучения", expanded=False):
+        for rec in recommendations:
+            url_link = f'<a href="{rec.get("url")}" target="_blank">Открыть</a>' if rec.get('url') else ''
+            st.markdown(f"""
+            <div class="source-card" style="border-left-color: #10B981;">
+                <div class="source-title" style="color: #10B981;">{rec.get('title', 'Материал')}</div>
+                <div class="source-snippet">{rec.get('description', '')}</div>
+                {url_link}
+            </div>
+            """, unsafe_allow_html=True)
+
+
 def display_quiz(quiz_data: dict):
     questions = quiz_data.get("questions", [])
     sources = quiz_data.get("sources", [])
@@ -281,8 +297,11 @@ def main():
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
-            if message["role"] == "assistant" and "sources" in message and st.session_state.show_sources:
-                display_sources(message["sources"])
+            if message["role"] == "assistant":
+                if "sources" in message and st.session_state.show_sources:
+                    display_sources(message["sources"])
+                if "recommendations" in message and message["recommendations"]:
+                    display_recommendations(message["recommendations"])
     
     examples_container = st.empty()
     
@@ -356,10 +375,14 @@ def main():
                 if st.session_state.show_sources and result.get("sources"):
                     display_sources(result["sources"])
                 
+                if result.get("recommendations"):
+                    display_recommendations(result["recommendations"])
+                
                 st.session_state.messages.append({
                     "role": "assistant",
                     "content": full_response,
-                    "sources": result.get("sources", [])
+                    "sources": result.get("sources", []),
+                    "recommendations": result.get("recommendations", [])
                 })
                 
                 st.session_state.chat_history.append((current_question, full_response))

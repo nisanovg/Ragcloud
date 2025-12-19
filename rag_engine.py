@@ -327,9 +327,12 @@ class RAGEngine:
                         "snippet": doc.page_content[:200] + "..." if len(doc.page_content) > 200 else doc.page_content
                     })
             
+            recommendations = self._get_recommendations(question, seen_sources)
+            
             return {
                 "answer_stream": char_generator(answer),
                 "sources": sources[:3],
+                "recommendations": recommendations,
                 "error": False
             }
             
@@ -342,6 +345,30 @@ class RAGEngine:
                 "sources": [],
                 "error": True
             }
+    
+    def _get_recommendations(self, question: str, used_sources: set) -> List[dict]:
+        """Get related documents that weren't used as direct sources."""
+        if not self.vector_store:
+            return []
+        
+        try:
+            all_docs = self.vector_store.similarity_search(question, k=8)
+            
+            recommendations = []
+            for doc in all_docs:
+                title = doc.metadata.get('title', doc.metadata.get('source', 'Unknown'))
+                if title not in used_sources and len(recommendations) < 3:
+                    recommendations.append({
+                        "title": title,
+                        "url": doc.metadata.get('url', ''),
+                        "category": doc.metadata.get('category', ''),
+                        "description": doc.page_content[:150] + "..." if len(doc.page_content) > 150 else doc.page_content
+                    })
+            
+            return recommendations
+        except Exception as e:
+            print(f"Error getting recommendations: {e}")
+            return []
     
     def clear_memory(self):
         """Clear conversation memory - placeholder for session-based memory."""
