@@ -9,6 +9,7 @@ from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 from document_loader import prepare_documents_for_indexing
+from logger import logger, log_with_context
 
 VECTOR_STORE_PATH = "vector_store"
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -40,9 +41,11 @@ class RAGEngine:
             )
             
             self._initialized = True
+            log_with_context(logger, "info", "RAG engine initialized successfully")
             return True
         except Exception as e:
-            print(f"Error initializing RAG engine: {e}")
+            log_with_context(logger, "error", "RAG engine initialization failed",
+                error_type=type(e).__name__)
             return False
     
     def build_index(self, force_rebuild: bool = False, knowledge_base_path: str = "knowledge_base/cloudru") -> bool:
@@ -61,16 +64,20 @@ class RAGEngine:
                     self.embeddings,
                     allow_dangerous_deserialization=True
                 )
-                print(f"Loaded existing vector store for {kb_name}")
+                log_with_context(logger, "info", "Loaded existing vector store",
+                    kb_name=kb_name)
                 return True
             except Exception as e:
-                print(f"Error loading vector store: {e}")
+                log_with_context(logger, "warning", "Error loading vector store, rebuilding",
+                    kb_name=kb_name)
         
-        print(f"Building new vector store for {kb_name}...")
+        log_with_context(logger, "info", "Building new vector store",
+            kb_name=kb_name)
         chunks = prepare_documents_for_indexing(knowledge_base_path)
         
         if not chunks:
-            print("No documents found to index")
+            log_with_context(logger, "warning", "No documents found to index",
+                kb_name=kb_name)
             return False
         
         documents = []
@@ -85,7 +92,8 @@ class RAGEngine:
         
         index_path.mkdir(parents=True, exist_ok=True)
         self.vector_store.save_local(str(index_path))
-        print(f"Vector store built and saved with {len(documents)} chunks")
+        log_with_context(logger, "info", "Vector store built and saved",
+            kb_name=kb_name, chunks_count=len(documents))
         
         return True
     

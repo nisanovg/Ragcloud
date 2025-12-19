@@ -4,6 +4,7 @@ import time
 from typing import List, Tuple
 
 from rag_engine import get_rag_engine, RAGEngine
+from logger import logger, metrics, validate_user_input, sanitize_error_message, log_with_context
 
 st.set_page_config(
     page_title="AI-Репетитор | Cloud.ru",
@@ -352,11 +353,16 @@ def main():
     current_question = None
     
     if st.session_state.pending_question:
-        current_question = st.session_state.pending_question
+        pending = st.session_state.pending_question
         st.session_state.pending_question = None
-        st.session_state.messages.append({"role": "user", "content": current_question})
-        st.session_state.awaiting_response = True
-        need_response = True
+        is_valid, validation_error = validate_user_input(pending)
+        if is_valid:
+            current_question = pending
+            st.session_state.messages.append({"role": "user", "content": current_question})
+            st.session_state.awaiting_response = True
+            need_response = True
+        else:
+            st.warning(validation_error)
     elif st.session_state.awaiting_response and st.session_state.messages:
         if st.session_state.messages[-1]["role"] == "user":
             current_question = st.session_state.messages[-1]["content"]
@@ -405,12 +411,16 @@ def main():
     chat_prompt = st.chat_input("Задайте вопрос...", disabled=is_disabled)
     
     if chat_prompt and not is_disabled:
-        current_question = chat_prompt
-        st.session_state.messages.append({"role": "user", "content": current_question})
-        st.session_state.awaiting_response = True
-        need_response = True
-        with st.chat_message("user"):
-            st.markdown(current_question)
+        is_valid, validation_error = validate_user_input(chat_prompt)
+        if not is_valid:
+            st.warning(validation_error)
+        else:
+            current_question = chat_prompt
+            st.session_state.messages.append({"role": "user", "content": current_question})
+            st.session_state.awaiting_response = True
+            need_response = True
+            with st.chat_message("user"):
+                st.markdown(current_question)
     
     if need_response and current_question:
         with st.chat_message("assistant"):
@@ -424,7 +434,14 @@ def main():
             </div>
             """, unsafe_allow_html=True)
             
+            start_time = time.time()
+            
             try:
+                log_with_context(logger, "info", "User query received",
+                    query_length=len(current_question),
+                    kb=st.session_state.selected_kb,
+                    history_length=len(st.session_state.chat_history))
+                
                 rag = get_rag_engine()
                 result = rag.query_stream(current_question, st.session_state.chat_history)
                 
@@ -439,6 +456,14 @@ def main():
                     time.sleep(0.02)
                 
                 response_placeholder.markdown(full_response)
+                
+                response_time = time.time() - start_time
+                metrics.record_request(response_time, success=True)
+                
+                log_with_context(logger, "info", "Query completed",
+                    response_time=round(response_time, 2),
+                    sources_count=len(result.get("sources", [])),
+                    response_length=len(full_response))
                 
                 if st.session_state.show_sources and result.get("sources"):
                     display_sources(result["sources"])
@@ -456,8 +481,16 @@ def main():
                 st.session_state.chat_history.append((current_question, full_response))
                 
             except Exception as e:
+                response_time = time.time() - start_time
+                metrics.record_request(response_time, success=False)
+                
+                log_with_context(logger, "error", "Query failed",
+                    error_type=type(e).__name__,
+                    response_time=round(response_time, 2))
+                
                 thinking_placeholder.empty()
-                st.error(f"Произошла ошибка: {str(e)}")
+                user_friendly_error = sanitize_error_message(e)
+                st.error(user_friendly_error)
             finally:
                 st.session_state.awaiting_response = False
                 st.rerun()
