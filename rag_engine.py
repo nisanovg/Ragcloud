@@ -45,13 +45,14 @@ class RAGEngine:
             print(f"Error initializing RAG engine: {e}")
             return False
     
-    def build_index(self, force_rebuild: bool = False) -> bool:
+    def build_index(self, force_rebuild: bool = False, knowledge_base_path: str = "knowledge_base/cloudru") -> bool:
         """Build or load the vector store index."""
         if not self._initialized:
             if not self.initialize():
                 return False
         
-        index_path = Path(VECTOR_STORE_PATH)
+        kb_name = Path(knowledge_base_path).name
+        index_path = Path(f"{VECTOR_STORE_PATH}_{kb_name}")
         
         if not force_rebuild and index_path.exists():
             try:
@@ -60,13 +61,13 @@ class RAGEngine:
                     self.embeddings,
                     allow_dangerous_deserialization=True
                 )
-                print("Loaded existing vector store")
+                print(f"Loaded existing vector store for {kb_name}")
                 return True
             except Exception as e:
                 print(f"Error loading vector store: {e}")
         
-        print("Building new vector store...")
-        chunks = prepare_documents_for_indexing()
+        print(f"Building new vector store for {kb_name}...")
+        chunks = prepare_documents_for_indexing(knowledge_base_path)
         
         if not chunks:
             print("No documents found to index")

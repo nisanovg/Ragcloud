@@ -123,6 +123,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+KNOWLEDGE_BASES = {
+    "cloudru": {"name": "Cloud.ru", "path": "knowledge_base/cloudru", "enabled": True},
+    "math": {"name": "Математика", "path": "knowledge_base/math", "enabled": False},
+    "informatics": {"name": "Информатика", "path": "knowledge_base/informatics", "enabled": False},
+}
+
 def init_session_state():
     if "messages" not in st.session_state:
         st.session_state.messages = []
@@ -142,19 +148,21 @@ def init_session_state():
         st.session_state.processing = False
     if "awaiting_response" not in st.session_state:
         st.session_state.awaiting_response = False
+    if "selected_kb" not in st.session_state:
+        st.session_state.selected_kb = "cloudru"
 
 
 def check_api_key() -> bool:
     return bool(os.environ.get("OPENAI_API_KEY"))
 
 
-def initialize_rag() -> Tuple[bool, str]:
+def initialize_rag(knowledge_base_path: str = "knowledge_base/cloudru") -> Tuple[bool, str]:
     rag = get_rag_engine()
     
     if not rag.initialize():
         return False, "Не удалось инициализировать движок. Проверьте API ключ."
     
-    if not rag.build_index():
+    if not rag.build_index(knowledge_base_path=knowledge_base_path):
         return False, "Не удалось построить индекс базы знаний."
     
     return True, "Система готова к работе!"
@@ -237,14 +245,56 @@ def main():
             st.error("API ключ OpenAI не настроен.")
             st.stop()
         
+        st.markdown("---")
+        st.subheader("📚 База знаний")
+        
+        kb_options = []
+        kb_labels = []
+        for kb_id, kb_info in KNOWLEDGE_BASES.items():
+            kb_options.append(kb_id)
+            if kb_info["enabled"]:
+                kb_labels.append(kb_info["name"])
+            else:
+                kb_labels.append(f"{kb_info['name']} (скоро)")
+        
+        def format_kb(kb_id):
+            kb_info = KNOWLEDGE_BASES[kb_id]
+            if kb_info["enabled"]:
+                return kb_info["name"]
+            return f"{kb_info['name']} (скоро)"
+        
+        current_idx = kb_options.index(st.session_state.selected_kb)
+        
+        selected = st.selectbox(
+            "Выберите предмет",
+            options=kb_options,
+            index=current_idx,
+            format_func=format_kb,
+            label_visibility="collapsed"
+        )
+        
+        if not KNOWLEDGE_BASES[selected]["enabled"]:
+            st.info("Эта база знаний пока недоступна. Выберите Cloud.ru.")
+            selected = "cloudru"
+        
+        if selected != st.session_state.selected_kb:
+            st.session_state.selected_kb = selected
+            st.session_state.rag_initialized = False
+            st.session_state.messages = []
+            st.session_state.chat_history = []
+            st.rerun()
+        
         if not st.session_state.rag_initialized:
             with st.spinner("Инициализация..."):
-                success, message = initialize_rag()
+                kb_path = KNOWLEDGE_BASES[st.session_state.selected_kb]["path"]
+                success, message = initialize_rag(kb_path)
                 if success:
                     st.session_state.rag_initialized = True
                 else:
                     st.error(message)
                     st.stop()
+        
+        st.markdown("---")
         
         st.session_state.show_sources = st.checkbox(
             "Показывать источники",
