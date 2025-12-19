@@ -1,0 +1,25 @@
+{
+  "knowledge_bases": [
+    {
+      "id": "cloudru",
+      "name": "Cloud.ru",
+      "path": "knowledge_base/cloudru",
+      "enabled": true,
+      "description": "Облачные технологии Cloud.ru"
+    },
+    {
+      "id": "math",
+      "name": "Математика",
+      "path": "knowledge_base/math",
+      "enabled": false,
+      "description": "Математика (скоро)"
+    },
+    {
+      "id": "informatics",
+      "name": "Информатика",
+      "path": "knowledge_base/informatics",
+      "enabled": false,
+      "description": "Информатика (скоро)"
+    }
+  ]
+}

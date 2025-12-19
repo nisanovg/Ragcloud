@@ -123,11 +123,29 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-KNOWLEDGE_BASES = {
-    "cloudru": {"name": "Cloud.ru", "path": "knowledge_base/cloudru", "enabled": True},
-    "math": {"name": "Математика", "path": "knowledge_base/math", "enabled": False},
-    "informatics": {"name": "Информатика", "path": "knowledge_base/informatics", "enabled": False},
-}
+def load_knowledge_bases():
+    """Load knowledge bases config from external JSON file."""
+    config_path = "knowledge_bases.json"
+    try:
+        import json
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        kb_dict = {}
+        for kb in config.get("knowledge_bases", []):
+            kb_dict[kb["id"]] = {
+                "name": kb["name"],
+                "path": kb["path"],
+                "enabled": kb["enabled"],
+                "description": kb.get("description", "")
+            }
+        return kb_dict
+    except Exception as e:
+        print(f"Error loading knowledge bases config: {e}")
+        return {
+            "cloudru": {"name": "Cloud.ru", "path": "knowledge_base/cloudru", "enabled": True}
+        }
+
+KNOWLEDGE_BASES = load_knowledge_bases()
 
 def init_session_state():
     if "messages" not in st.session_state:
