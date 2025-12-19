@@ -1,0 +1,10 @@
+.pythonlibs/
+.cache/
+.upm/
+__pycache__/
+*.pyc
+app.log
+vector_store*/
+.env
+.replit
+replit.nix
