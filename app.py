@@ -267,34 +267,28 @@ def main():
         st.markdown("---")
         st.subheader("📚 База знаний")
         
-        kb_options = []
-        kb_labels = []
-        for kb_id, kb_info in KNOWLEDGE_BASES.items():
-            kb_options.append(kb_id)
-            if kb_info["enabled"]:
-                kb_labels.append(kb_info["name"])
-            else:
-                kb_labels.append(f"{kb_info['name']} (скоро)")
+        enabled_options = [kb_id for kb_id, kb_info in KNOWLEDGE_BASES.items() if kb_info["enabled"]]
+        disabled_options = [kb_id for kb_id, kb_info in KNOWLEDGE_BASES.items() if not kb_info["enabled"]]
         
         def format_kb(kb_id):
-            kb_info = KNOWLEDGE_BASES[kb_id]
-            if kb_info["enabled"]:
-                return kb_info["name"]
-            return f"{kb_info['name']} (скоро)"
+            return KNOWLEDGE_BASES[kb_id]["name"]
         
-        current_idx = kb_options.index(st.session_state.selected_kb)
+        if st.session_state.selected_kb not in enabled_options:
+            st.session_state.selected_kb = enabled_options[0] if enabled_options else "cloudru"
+        
+        current_idx = enabled_options.index(st.session_state.selected_kb) if st.session_state.selected_kb in enabled_options else 0
         
         selected = st.selectbox(
             "Выберите предмет",
-            options=kb_options,
+            options=enabled_options,
             index=current_idx,
             format_func=format_kb,
             label_visibility="collapsed"
         )
         
-        if not KNOWLEDGE_BASES[selected]["enabled"]:
-            st.info("Эта база знаний пока недоступна. Выберите Cloud.ru.")
-            selected = "cloudru"
+        if disabled_options:
+            disabled_names = ", ".join([KNOWLEDGE_BASES[kb]["name"] for kb in disabled_options])
+            st.caption(f"🔜 Скоро: {disabled_names}")
         
         if selected != st.session_state.selected_kb:
             st.session_state.selected_kb = selected
